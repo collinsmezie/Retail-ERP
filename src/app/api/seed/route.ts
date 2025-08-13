@@ -3,6 +3,10 @@ import { jsonRepository } from '@/lib/repository';
 import { generateId, generateTimestamp } from '@/lib/models';
 import { logger } from '@/lib/logger';
 
+export async function GET(request: NextRequest) {
+  return await POST(request);
+}
+
 export async function POST(request: NextRequest) {
   try {
     logger.info('Starting data seeding via API...');
