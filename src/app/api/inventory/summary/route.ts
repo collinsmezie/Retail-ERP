@@ -2,12 +2,25 @@ import { NextRequest, NextResponse } from 'next/server';
 import { staticRepository } from '../../../../lib/staticRepository';
 import { logger } from '../../../../lib/logger';
 
+interface InventoryItem {
+  id: string;
+  tenantId: string;
+  productId: string;
+  quantity: number;
+  reorderPoint: number;
+}
+
+interface Product {
+  id: string;
+  price: number;
+}
+
 export async function GET(request: NextRequest) {
   try {
     logger.info('Fetching inventory summary from static repository');
     
-    const inventories = await staticRepository.findByTenantId('inventories', 'tenant1');
-    const products = await staticRepository.findByTenantId('products', 'tenant1');
+    const inventories = await staticRepository.findByTenantId<InventoryItem>('inventories', 'tenant1');
+    const products = await staticRepository.findByTenantId<Product>('products', 'tenant1');
     
     // Calculate summary statistics
     const totalProducts = products.length;

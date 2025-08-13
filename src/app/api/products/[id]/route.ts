@@ -2,6 +2,15 @@ import { NextRequest, NextResponse } from 'next/server';
 import { staticRepository } from '../../../../lib/staticRepository';
 import { logger } from '../../../../lib/logger';
 
+interface Product {
+  id: string;
+  name: string;
+  sku: string;
+  price: number;
+  category: string;
+  brand: string;
+}
+
 export async function GET(
   request: NextRequest,
   { params }: { params: { id: string } }
@@ -10,7 +19,7 @@ export async function GET(
     const { id } = params;
     logger.info(`Fetching product with ID: ${id}`);
     
-    const product = await staticRepository.findById('products', id);
+    const product = await staticRepository.findById<Product>('products', id);
     
     if (!product) {
       logger.warn(`Product not found with ID: ${id}`);
@@ -40,7 +49,7 @@ export async function PUT(
     const body = await request.json();
     logger.info(`Updating product with ID: ${id}`, { body });
     
-    const updatedProduct = await staticRepository.update('products', id, {
+    const updatedProduct = await staticRepository.update<Product>('products', id, {
       ...body,
       updatedAt: new Date().toISOString()
     });
