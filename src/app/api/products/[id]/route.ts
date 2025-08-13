@@ -1,29 +1,31 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { ProductService } from '@/lib/product.service';
-import { productValidation } from '@/lib/product.validation';
-
-const productService = new ProductService();
+import { staticRepository } from '../../../../lib/staticRepository';
+import { logger } from '../../../../lib/logger';
 
 export async function GET(
   request: NextRequest,
-  { params }: { params: Promise<{ id: string }> }
+  { params }: { params: { id: string } }
 ) {
   try {
-    const { id } = await params;
-    const product = await productService.getById('tenant1', id);
+    const { id } = params;
+    logger.info(`Fetching product with ID: ${id}`);
+    
+    const product = await staticRepository.findById('products', id);
     
     if (!product) {
+      logger.warn(`Product not found with ID: ${id}`);
       return NextResponse.json(
         { error: 'Product not found' },
         { status: 404 }
       );
     }
-
+    
+    logger.info(`Product found: ${product.name}`);
     return NextResponse.json(product);
   } catch (error) {
-    console.error('Failed to fetch product:', error);
+    logger.error(`Failed to fetch product with ID: ${params.id}`, { error });
     return NextResponse.json(
-      { error: 'Failed to fetch product' },
+      { error: 'Failed to fetch product', details: error instanceof Error ? error.message : 'Unknown error' },
       { status: 500 }
     );
   }
@@ -31,49 +33,32 @@ export async function GET(
 
 export async function PUT(
   request: NextRequest,
-  { params }: { params: Promise<{ id: string }> }
+  { params }: { params: { id: string } }
 ) {
   try {
-    const { id } = await params;
+    const { id } = params;
     const body = await request.json();
+    logger.info(`Updating product with ID: ${id}`, { body });
     
-    const parseResult = productValidation.updateProductSchema.safeParse(body);
-    if (!parseResult.success) {
-      return NextResponse.json(
-        { errors: parseResult.error.issues },
-        { status: 400 }
-      );
-    }
-
-    const product = await productService.update('tenant1', id, parseResult.data);
+    const updatedProduct = await staticRepository.update('products', id, {
+      ...body,
+      updatedAt: new Date().toISOString()
+    });
     
-    if (!product) {
+    if (!updatedProduct) {
+      logger.warn(`Product not found for update with ID: ${id}`);
       return NextResponse.json(
         { error: 'Product not found' },
         { status: 404 }
       );
     }
-
-    return NextResponse.json(product);
-  } catch (error: any) {
-    console.error('Failed to update product:', error);
     
-    if (error.message.includes('already exists')) {
-      return NextResponse.json(
-        { error: error.message },
-        { status: 409 }
-      );
-    }
-
-    if (error.message === 'Product not found') {
-      return NextResponse.json(
-        { error: 'Product not found' },
-        { status: 404 }
-      );
-    }
-
+    logger.info(`Product updated successfully: ${updatedProduct.name}`);
+    return NextResponse.json(updatedProduct);
+  } catch (error) {
+    logger.error(`Failed to update product with ID: ${params.id}`, { error });
     return NextResponse.json(
-      { error: 'Failed to update product' },
+      { error: 'Failed to update product', details: error instanceof Error ? error.message : 'Unknown error' },
       { status: 500 }
     );
   }
@@ -81,31 +66,28 @@ export async function PUT(
 
 export async function DELETE(
   request: NextRequest,
-  { params }: { params: Promise<{ id: string }> }
+  { params }: { params: { id: string } }
 ) {
   try {
-    const { id } = await params;
-    await productService.delete('tenant1', id);
-    return NextResponse.json({ message: 'Product deleted successfully' });
-  } catch (error: any) {
-    console.error('Failed to delete product:', error);
+    const { id } = params;
+    logger.info(`Deleting product with ID: ${id}`);
     
-    if (error.message === 'Product not found') {
+    const success = await staticRepository.delete('products', id);
+    
+    if (!success) {
+      logger.warn(`Product not found for deletion with ID: ${id}`);
       return NextResponse.json(
         { error: 'Product not found' },
         { status: 404 }
       );
     }
-
-    if (error.message.includes('existing inventory')) {
-      return NextResponse.json(
-        { error: error.message },
-        { status: 400 }
-      );
-    }
-
+    
+    logger.info(`Product deleted successfully with ID: ${id}`);
+    return NextResponse.json({ success: true, message: 'Product deleted successfully' });
+  } catch (error) {
+    logger.error(`Failed to delete product with ID: ${params.id}`, { error });
     return NextResponse.json(
-      { error: 'Failed to delete product' },
+      { error: 'Failed to delete product', details: error instanceof Error ? error.message : 'Unknown error' },
       { status: 500 }
     );
   }
